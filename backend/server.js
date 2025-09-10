@@ -8,7 +8,10 @@ const app = express();
 
 connectDB();
 
-app.use(cors()); 
+const corsOptions = {
+  origin: process.env.CLIENT_URL || 'http://localhost:3000'
+};
+app.use(cors(corsOptions));
 app.use(express.json({ extended: false })); 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/reports', express.static(path.join(__dirname, 'reports'))); 
