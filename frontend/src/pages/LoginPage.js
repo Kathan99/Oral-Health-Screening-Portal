@@ -27,7 +27,7 @@ const LoginPage = () => {
         e.preventDefault();
         setSuccessMessage('');
         try {
-            const res = await axios.post('http://localhost:5001/api/auth/login', { email, password });
+            const res = await axios.post('https://oral-health-screening-portal.onrender.com/api/auth/login', { email, password });
             localStorage.setItem('token', res.data.token);
             const { user } = jwtDecode(res.data.token);
 

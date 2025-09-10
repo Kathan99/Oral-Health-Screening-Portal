@@ -14,7 +14,7 @@ const RegisterPage = () => {
         e.preventDefault();
         try {
             // The backend creates the user successfully.
-            await axios.post('http://localhost:5001/api/auth/register', { email, password });
+            await axios.post('https://oral-health-screening-portal.onrender.com/api/auth/register', { email, password });
 
             // NEW LOGIC: Instead of logging in, redirect to the login page.
             // We pass a success message in the navigation state.

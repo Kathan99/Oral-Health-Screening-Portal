@@ -39,7 +39,7 @@ const AnnotationPage = () => {
         const fetchSubmission = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get(`http://localhost:5001/api/submissions/${id}`, { headers: { 'x-auth-token': token } });
+                const res = await axios.get(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}`, { headers: { 'x-auth-token': token } });
                 setSubmission(res.data);
                 if (res.data.legends) {
                     setLegends(res.data.legends);
@@ -57,7 +57,7 @@ const AnnotationPage = () => {
     useEffect(() => {
         if (selectedImage) {
             const img = new window.Image();
-            img.src = `http://localhost:5001/${selectedImage}`;
+            img.src = `https://oral-health-screening-portal.onrender.com/${selectedImage}`;
             img.crossOrigin = 'Anonymous';
             img.onload = () => setImageElement(img);
         }
@@ -119,7 +119,7 @@ const AnnotationPage = () => {
             formData.append('originalImageUrl', selectedImage);
 
             const token = localStorage.getItem('token');
-            const res = await axios.put(`http://localhost:5001/api/submissions/${id}/annotate`, formData, {
+            const res = await axios.put(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}/annotate`, formData, {
                 headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' }
             });
             setMessage(`Annotation for ${selectedImage.split('/').pop()} saved successfully!`);
@@ -135,7 +135,7 @@ const AnnotationPage = () => {
         setMessage('Generating report...');
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`http://localhost:5001/api/submissions/${id}/generate-report`, {}, { headers: { 'x-auth-token': token } });
+            await axios.post(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}/generate-report`, {}, { headers: { 'x-auth-token': token } });
             setMessage('Report generated successfully! Redirecting...');
             setTimeout(() => navigate('/admin'), 2000);
         } catch (err) { setError('Failed to generate report.'); setMessage(''); }
@@ -175,7 +175,7 @@ const AnnotationPage = () => {
                     {submission?.originalImageUrls.map(url => (
                         <img
                             key={url}
-                            src={`http://localhost:5001/${url}`}
+                            src={`https://oral-health-screening-portal.onrender.com/${url}`}
                             alt="thumbnail"
                             style={selectedImage === url ? styles.thumbnailSelected : styles.thumbnail}
                             onClick={() => handleImageSelect(url)}

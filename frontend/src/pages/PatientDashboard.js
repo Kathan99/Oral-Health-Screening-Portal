@@ -12,7 +12,7 @@ const PatientDashboard = () => {
         const fetchSubmissions = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5001/api/submissions/patient', {
+                const res = await axios.get('https://oral-health-screening-portal.onrender.com/api/submissions/patient', {
                     headers: { 'x-auth-token': token }
                 });
                 setSubmissions(res.data);
@@ -40,7 +40,7 @@ const PatientDashboard = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.post('http://localhost:5001/api/submissions', submissionData, {
+            const res = await axios.post('https://oral-health-screening-portal.onrender.com/api/submissions', submissionData, {
                 headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' }
             });
             setMessage('Submission successful! Your records will be updated shortly.');
@@ -133,7 +133,7 @@ const PatientDashboard = () => {
                                     </div>
                                     <div style={{ flex: 1, textAlign: 'right' }}>
                                         {sub.status === 'reported' && sub.reportUrl ? (
-                                            <a href={`http://localhost:5001/${sub.reportUrl}`} target="_blank" rel="noopener noreferrer" style={styles.downloadLink}>
+                                            <a href={`https://oral-health-screening-portal.onrender.com/${sub.reportUrl}`} target="_blank" rel="noopener noreferrer" style={styles.downloadLink}>
                                                 Download Report
                                             </a>
                                         ) : (

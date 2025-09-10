@@ -11,7 +11,7 @@ const AdminDashboard = () => {
         const fetchSubmissions = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('http://localhost:5001/api/submissions', {
+                const res = await axios.get('https://oral-health-screening-portal.onrender.com/api/submissions', {
                     headers: { 'x-auth-token': token }
                 });
                 setSubmissions(res.data);
