@@ -30,6 +30,7 @@ const uploadToS3 = async (fileBuffer, fileName, mimetype) => {
         Key: `uploads/${fileName}`, 
         Body: fileBuffer,
         ContentType: mimetype,
+        ACL: 'public-read' 
     });
     await s3.send(command);
 
