@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Your deployed backend URL
+const apiUrl = 'https://oral-health-screening-portal.onrender.com';
+
 const PatientDashboard = () => {
     const [formData, setFormData] = useState({ name: '', email: '', note: '', images: [] });
     const [submissions, setSubmissions] = useState([]);
@@ -12,7 +15,7 @@ const PatientDashboard = () => {
         const fetchSubmissions = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get('https://oral-health-screening-portal.onrender.com/api/submissions/patient', {
+                const res = await axios.get(`${apiUrl}/api/submissions/patient`, {
                     headers: { 'x-auth-token': token }
                 });
                 setSubmissions(res.data);
@@ -40,14 +43,14 @@ const PatientDashboard = () => {
 
         try {
             const token = localStorage.getItem('token');
-            const res = await axios.post('https://oral-health-screening-portal.onrender.com/api/submissions', submissionData, {
+            const res = await axios.post(`${apiUrl}/api/submissions`, submissionData, {
                 headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' }
             });
-            setMessage('Submission successful! Your records will be updated shortly.');
+            setMessage('Submission successful! Your record has been added below.');
             setSubmissions([res.data, ...submissions]);
-            // Reset form
+            // Reset form for the next submission
             setFormData({ name: '', email: '', note: '', images: [] });
-            document.getElementById('file-input').value = ""; // Clear file input
+            document.getElementById('file-input').value = "";
         } catch (err) {
             setError(err.response?.data?.msg || 'Submission failed. Please check your files and try again.');
         } finally {
@@ -68,14 +71,12 @@ const PatientDashboard = () => {
             fontSize: '12px',
             fontWeight: 'bold',
             textTransform: 'uppercase',
-            backgroundColor: '#6c757d' // Default grey
+            backgroundColor: '#6c757d' // Default grey for 'annotated'
         };
 
         if (status === 'uploaded') {
             style.backgroundColor = '#ffc107'; // Yellow
             style.color = '#333';
-        } else if (status === 'annotated') {
-            style.backgroundColor = '#17a2b8'; // Blue
         } else if (status === 'reported') {
             style.backgroundColor = '#28a745'; // Green
         }
@@ -133,7 +134,12 @@ const PatientDashboard = () => {
                                     </div>
                                     <div style={{ flex: 1, textAlign: 'right' }}>
                                         {sub.status === 'reported' && sub.reportUrl ? (
-                                            <a href={`https://oral-health-screening-portal.onrender.com/${sub.reportUrl}`} target="_blank" rel="noopener noreferrer" style={styles.downloadLink}>
+                                            <a 
+                                                href={sub.reportUrl} // CORRECT: Use the S3 URL directly
+                                                target="_blank" 
+                                                rel="noopener noreferrer" 
+                                                style={styles.downloadLink}
+                                            >
                                                 Download Report
                                             </a>
                                         ) : (
@@ -153,26 +159,25 @@ const PatientDashboard = () => {
 };
 
 // --- Professional CSS-in-JS Styles ---
-
 const styles = {
     page: { fontFamily: 'system-ui, sans-serif', backgroundColor: '#f4f7f6', minHeight: '100vh', padding: '20px' },
     header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' },
     logoutButton: { padding: '10px 18px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-    dashboardLayout: { display: 'flex', gap: '30px' },
+    dashboardLayout: { display: 'flex', gap: '30px', flexDirection: 'column', '@media (min-width: 768px)': { flexDirection: 'row' } },
     card: { backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
     cardTitle: { marginTop: 0, marginBottom: '5px' },
     cardSubtitle: { color: '#6c757d', fontSize: '14px', marginTop: 0, marginBottom: '20px' },
     label: { display: 'block', fontWeight: 'bold', marginBottom: '5px', fontSize: '14px' },
-    input: { display: 'block', width: 'calc(100% - 20px)', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ced4da' },
-    textarea: { display: 'block', width: 'calc(100% - 20px)', minHeight: '80px', padding: '10px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ced4da' },
+    input: { display: 'block', width: 'calc(100% - 22px)', padding: '11px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ced4da' },
+    textarea: { display: 'block', width: 'calc(100% - 22px)', minHeight: '80px', padding: '11px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ced4da' },
     button: { width: '100%', padding: '12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', transition: 'background-color 0.2s' },
     buttonDisabled: { width: '100%', padding: '12px', backgroundColor: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'not-allowed', fontWeight: 'bold', fontSize: '16px' },
     list: { listStyleType: 'none', padding: 0, margin: 0 },
     listItem: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #e9ecef' },
     listDate: { fontWeight: 'bold', margin: '0 0 5px 0' },
     listNote: { color: '#6c757d', fontSize: '14px', margin: 0 },
-    downloadLink: { color: '#007bff', textDecoration: 'none', fontWeight: 'bold' },
-    noReport: { color: '#6c757d', fontStyle: 'italic' },
+    downloadLink: { color: '#007bff', textDecoration: 'none', fontWeight: 'bold', whiteSpace: 'nowrap' },
+    noReport: { color: '#6c757d', fontStyle: 'italic', whiteSpace: 'nowrap' },
     errorMessage: { color: '#dc3545', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '5px', border: '1px solid #f5c6cb' },
     successMessage: { color: '#155724', backgroundColor: '#d4edda', padding: '10px', borderRadius: '5px', border: '1px solid #c3e6cb' }
 };

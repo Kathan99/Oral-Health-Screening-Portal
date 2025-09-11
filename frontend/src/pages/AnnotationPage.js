@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Stage, Layer, Image, Rect, Circle, Arrow, Line } from 'react-konva';
 
-// Helper function to convert a Base64 data URL to a File object
+// Your deployed backend URL
+const apiUrl = 'https://oral-health-screening-portal.onrender.com';
+
+// Helper function to convert a Base64 data URL to a File object for upload
 const dataURLtoFile = (dataurl, filename) => {
     let arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
         bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
@@ -39,13 +42,12 @@ const AnnotationPage = () => {
         const fetchSubmission = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const res = await axios.get(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}`, { headers: { 'x-auth-token': token } });
+                const res = await axios.get(`${apiUrl}/api/submissions/${id}`, { headers: { 'x-auth-token': token } });
                 setSubmission(res.data);
                 if (res.data.legends) {
                     setLegends(res.data.legends);
                 }
                 if (res.data.originalImageUrls && res.data.originalImageUrls.length > 0) {
-                    // Automatically select the first image and load its annotations
                     handleImageSelect(res.data.originalImageUrls[0], res.data.annotations);
                 }
             } catch (err) { setError('Failed to fetch submission details.'); }
@@ -53,12 +55,12 @@ const AnnotationPage = () => {
         fetchSubmission();
     }, [id]);
 
-    // This effect runs whenever the selectedImage changes to load the image file
     useEffect(() => {
         if (selectedImage) {
             const img = new window.Image();
-            img.src = `https://oral-health-screening-portal.onrender.com/${selectedImage}`;
-            img.crossOrigin = 'Anonymous';
+            // CORRECT: Use the full S3 URL directly
+            img.src = selectedImage;
+            img.crossOrigin = 'Anonymous'; // Required for Konva to export the image
             img.onload = () => setImageElement(img);
         }
     }, [selectedImage]);
@@ -66,8 +68,8 @@ const AnnotationPage = () => {
     // Function to switch between images
     const handleImageSelect = (imageUrl, allAnnotations) => {
         setSelectedImage(imageUrl);
-        // Load shapes only for the selected image
-        const existingAnnotation = (allAnnotations || submission.annotations).find(ann => ann.originalUrl === imageUrl);
+        const currentAnnotations = allAnnotations || (submission ? submission.annotations : []);
+        const existingAnnotation = currentAnnotations.find(ann => ann.originalUrl === imageUrl);
         setShapes(existingAnnotation?.annotationData?.shapes || []);
     };
 
@@ -92,9 +94,8 @@ const AnnotationPage = () => {
         const stage = e.target.getStage();
         const pos = stage.getPointerPosition();
         let lastShape = { ...shapes[shapes.length - 1] };
-        if (lastShape.type === 'freehand') {
-            lastShape.points = lastShape.points.concat([pos.x, pos.y]);
-        } else if (lastShape.type === 'arrow') {
+
+        if (lastShape.type === 'arrow') {
             lastShape.points = [lastShape.points[0], lastShape.points[1], pos.x, pos.y];
         } else {
             lastShape.width = pos.x - lastShape.x;
@@ -119,11 +120,11 @@ const AnnotationPage = () => {
             formData.append('originalImageUrl', selectedImage);
 
             const token = localStorage.getItem('token');
-            const res = await axios.put(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}/annotate`, formData, {
+            const res = await axios.put(`${apiUrl}/api/submissions/${id}/annotate`, formData, {
                 headers: { 'x-auth-token': token, 'Content-Type': 'multipart/form-data' }
             });
-            setMessage(`Annotation for ${selectedImage.split('/').pop()} saved successfully!`);
-            setSubmission(res.data); // Update submission state with new annotation data
+            setMessage(`Annotation for the current image saved successfully!`);
+            setSubmission(res.data);
         } catch (err) { setError('Failed to save annotation.'); setMessage(''); }
     };
 
@@ -135,7 +136,7 @@ const AnnotationPage = () => {
         setMessage('Generating report...');
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`https://oral-health-screening-portal.onrender.com/api/submissions/${id}/generate-report`, {}, { headers: { 'x-auth-token': token } });
+            await axios.post(`${apiUrl}/api/submissions/${id}/generate-report`, {}, { headers: { 'x-auth-token': token } });
             setMessage('Report generated successfully! Redirecting...');
             setTimeout(() => navigate('/admin'), 2000);
         } catch (err) { setError('Failed to generate report.'); setMessage(''); }
@@ -148,9 +149,8 @@ const AnnotationPage = () => {
                 {error && <p style={styles.errorMessage}>{error}</p>}
                 {message && <p style={styles.successMessage}>{message}</p>}
 
-                {/* --- UNIFIED LEGEND CREATOR --- */}
                 <div style={styles.legendCreator}>
-                    <input type="color" value={currentColor} onChange={(e) => setCurrentColor(e.target.value)} style={{height: '40px'}} />
+                    <input type="color" value={currentColor} onChange={(e) => setCurrentColor(e.target.value)} style={{height: '40px', cursor: 'pointer'}} />
                     <input
                         type="text"
                         placeholder="Define Annotation Type (e.g., Caries, Stain)"
@@ -170,20 +170,18 @@ const AnnotationPage = () => {
                     ))}
                 </div>
 
-                {/* --- IMAGE THUMBNAIL SELECTOR --- */}
                 <div style={styles.thumbnailContainer}>
                     {submission?.originalImageUrls.map(url => (
                         <img
                             key={url}
-                            src={`https://oral-health-screening-portal.onrender.com/${url}`}
+                            src={url} // CORRECT: Use the S3 URL directly
                             alt="thumbnail"
                             style={selectedImage === url ? styles.thumbnailSelected : styles.thumbnail}
-                            onClick={() => handleImageSelect(url)}
+                            onClick={() => handleImageSelect(url, submission.annotations)}
                         />
                     ))}
                 </div>
 
-                {/* --- DRAWING TOOLBAR --- */}
                 <div style={styles.toolbar}>
                     <label style={{fontWeight: 'bold'}}>Tool:</label>
                     <select onChange={(e) => setTool(e.target.value)} value={tool} style={styles.toolSelect}>
@@ -194,7 +192,6 @@ const AnnotationPage = () => {
                     <button onClick={() => setShapes(shapes.slice(0, -1))} style={{...styles.button, backgroundColor: '#6c757d'}}>Undo Last Shape</button>
                 </div>
 
-                {/* --- ANNOTATION AREA --- */}
                 <div style={styles.canvasContainer}>
                      {imageElement ? (
                         <Stage
@@ -218,7 +215,6 @@ const AnnotationPage = () => {
                     ) : <p>Select an image to begin annotation.</p>}
                 </div>
 
-                 {/* --- ACTION BUTTONS --- */}
                 <div style={{ marginTop: '20px', display: 'flex', gap: '20px' }}>
                     <button onClick={handleSave} style={{...styles.button, flex: 1}}>Save Annotation for This Image</button>
                     <button onClick={handleGenerateReport} style={{...styles.button, flex: 1, backgroundColor: '#28a745'}}>Generate Final Report</button>
@@ -228,7 +224,7 @@ const AnnotationPage = () => {
     );
 };
 
-// Professional styles to make the page look clean
+// Professional styles
 const styles = {
     page: { fontFamily: 'system-ui, sans-serif', backgroundColor: '#f4f7f6', padding: '20px' },
     card: { backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' },
@@ -240,7 +236,7 @@ const styles = {
     thumbnailSelected: { height: '100px', width: '100px', objectFit: 'cover', cursor: 'pointer', border: '3px solid #007bff', borderRadius: '5px' },
     toolbar: { marginBottom: '20px', display: 'flex', gap: '15px', alignItems: 'center' },
     toolSelect: { padding: '8px', borderRadius: '5px', border: '1px solid #ced4da' },
-    canvasContainer: { border: '1px solid #ccc', display: 'inline-block', lineHeight: 0 },
+    canvasContainer: { border: '1px solid #ccc', display: 'inline-block', lineHeight: 0, background: '#f8f9fa' },
     button: { padding: '10px 18px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
     input: { padding: '10px', borderRadius: '5px', border: '1px solid #ced4da', flex: 1 },
     errorMessage: { color: '#dc3545', backgroundColor: '#f8d7da', padding: '10px', borderRadius: '5px', border: '1px solid #f5c6cb' },
