@@ -43,7 +43,7 @@ This is a full-stack MERN application designed to streamline the remote health s
 -   MongoDB (A connection string from a service like MongoDB Atlas is required)
 -   AWS S3 Bucket and Credentials
 
-### 1. Clone the Repository
+### How to run
 ```bash
 git clone https://github.com/Kathan99/Oral-Health-Screening-Portal.git
 cd Oral-Health-Screening-Portal
