@@ -10,6 +10,7 @@ const Submission = require('../models/Submission');
 const router = express.Router();
 
 
+// --- S3 & Multer Configuration ---
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
     credentials: {
@@ -24,20 +25,25 @@ const multiUpload = multer({ storage: storage }).array('images', 5);
 const singleUpload = multer({ storage: storage }).single('annotatedImage');
 
 
+// Helper function to upload any file buffer to S3
 const uploadToS3 = async (fileBuffer, fileName, mimetype) => {
     const command = new PutObjectCommand({
         Bucket: BUCKET_NAME,
         Key: `uploads/${fileName}`, 
         Body: fileBuffer,
         ContentType: mimetype,
-        ACL: 'public-read' 
+        // ACL: 'public-read' // <-- THIS LINE IS REMOVED
     });
     await s3.send(command);
 
+    // Return the public URL
     return `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/uploads/${fileName}`;
 };
 
 
+// --- (The rest of the file is IDENTICAL to the version you already have) ---
+
+// @route   POST /api/submissions (Patient upload)
 router.post('/', authorize('patient'), multiUpload, async (req, res) => {
     const { name, email, note } = req.body;
     if (!req.files || req.files.length === 0) {
@@ -58,6 +64,7 @@ router.post('/', authorize('patient'), multiUpload, async (req, res) => {
     } catch (err) { console.error("S3 Upload Error:", err); res.status(500).send('Server Error'); }
 });
 
+// @route   PUT /api/submissions/:id/annotate
 router.put('/:id/annotate', authorize('admin'), singleUpload, async (req, res) => {
     const { shapes, legends, originalImageUrl } = req.body;
     if (!req.file || !shapes || !legends || !originalImageUrl) {
@@ -90,7 +97,7 @@ router.put('/:id/annotate', authorize('admin'), singleUpload, async (req, res) =
     } catch (err) { console.error("Annotate Error:", err); res.status(500).send('Server Error'); }
 });
 
-
+// @route   POST /api/submissions/:id/generate-report
 router.post('/:id/generate-report', authorize('admin'), async (req, res) => {
     try {
         const submission = await Submission.findById(req.params.id);
@@ -104,7 +111,7 @@ router.post('/:id/generate-report', authorize('admin'), async (req, res) => {
         const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
         let currentY = height - 50;
 
-        
+        // ... (PDF generation logic is the same) ...
         page.drawText('Oral Health Screening Report', { x: 50, y: currentY, font: boldFont, size: 24 });
         currentY -= 40;
         const details = [`Name: ${submission.name}`, `Email: ${submission.email}`, `Date: ${new Date(submission.createdAt).toLocaleDateString()}`];
@@ -113,7 +120,6 @@ router.post('/:id/generate-report', authorize('admin'), async (req, res) => {
         page.drawText('SCREENING REPORT:', { x: 50, y: currentY, font: boldFont, size: 16 });
         currentY -= 220; 
 
-     
         const images = submission.annotations;
         if (images.length > 0) {
             const imageMargin = 20;
@@ -149,11 +155,9 @@ router.post('/:id/generate-report', authorize('admin'), async (req, res) => {
             });
         }
 
-
         const pdfBytes = await pdfDoc.save();
         const reportFileName = `report-${submission._id}-${Date.now()}.pdf`;
         const reportS3Url = await uploadToS3(pdfBytes, reportFileName, 'application/pdf');
-
    
         submission.reportUrl = reportS3Url;
         submission.status = 'reported';
@@ -161,6 +165,8 @@ router.post('/:id/generate-report', authorize('admin'), async (req, res) => {
         res.json(submission);
     } catch (err) { console.error("Report Generation Error:", err); res.status(500).send('Server Error'); }
 });
+
+
 
 
 router.get('/patient', authorize('patient'), async (req, res) => {
